@@ -5,8 +5,8 @@ info:
   version: 1.0.0
 
 servers:
-  - url: http://localhost:5000
-    description: Servidor Local de Desenvolvimento
+  - url: https://api-one-delta-89.vercel.app
+    description: Api em produção (Vercel)
 
 components:
   security:
