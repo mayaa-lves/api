@@ -102,7 +102,7 @@ def criar_produto():
     
     dados = request.get_json()
 
-    if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados:
+    if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados or "link_img" not in dados:
         return jsonify({"error": "Dados inválidos!"}), 400
 
     try:
@@ -117,7 +117,8 @@ def criar_produto():
             "nome": dados["nome"],
             "preco": dados["preco"],
             "descricao": dados["descricao"],
-            "categoria": dados["categoria"]
+            "categoria": dados["categoria"],
+            "link_img": dados["link_img"]
             })
         
         return jsonify({"message": "Produto criado com sucesso!"}), 201
@@ -131,7 +132,7 @@ def criar_produto():
 def put_produtos(id):
     dados = request.get_json()
 
-    if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados:
+    if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados or "link_img" not in dados:
         return jsonify({"error": "Dados inválidos!"}), 400
     
     docs = db.collection("produtos").where("id", "==", id).limit(1).get()
@@ -142,7 +143,8 @@ def put_produtos(id):
             "nome": dados["nome"],
             "preco": dados["preco"],
             "descricao": dados["descricao"],
-            "categoria": dados["categoria"]
+            "categoria": dados["categoria"],
+            "link_img": dados["link_img"]
         })
 
     return jsonify({"message": "Produto atualizado com sucesso!"}), 200 
