@@ -218,6 +218,63 @@ def listar_materiais():
     except Exception as e:
         return jsonify({"error": f"Erro ao listar materiais: {str(e)}"}), 500
     
+
+@app.route('/materiais/<int:id>', methods=['PATCH'])
+@token_obrigatorio
+def atualizar_material(id):
+    """
+    Atualiza parcialmente um material (ex: diminuir quantidade)
+    ---
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              quantidade: {type: number, example: 95}
+    responses:
+      200:
+        description: Material atualizado com sucesso
+      404:
+        description: Material não encontrado
+      401:
+        description: Token obrigatório
+    """
+    try:
+        dados = request.get_json()
+        
+        # Buscar o documento pelo ID numérico
+        docs = db.collection('materiais').where('id', '==', id).limit(1).get()
+        
+        material_encontrado = None
+        doc_id = None
+        
+        for doc in docs:
+            material_encontrado = doc.to_dict()
+            doc_id = doc.id
+            break
+        
+        if not material_encontrado:
+            return jsonify({"error": "Material não encontrado"}), 404
+        
+        # Atualizar apenas os campos enviados
+        doc_ref = db.collection('materiais').document(doc_id)
+        doc_ref.update(dados)
+        
+        return jsonify({"message": "Material atualizado com sucesso!"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Erro ao atualizar material: {str(e)}"}), 500
+    
 # rota para atualizar produto totalmente (put)
 @app.route('/produtos/<int:id>', methods=['PUT'])
 @token_obrigatorio
