@@ -126,6 +126,71 @@ def criar_produto():
         return jsonify({"error": "Erro ao criar produto!"}), 500
 # --------------------------------------------
 
+# rota para add materiais ao produto
+@app.route('/materiais', methods=['POST'])
+@token_obrigatorio
+def criar_material():
+    """
+    Cria um novo material no estoque
+    ---
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              nome: {type: string, example: "Limpa cachimbos azul"}
+              quantidade: {type: number, example: 100}
+              quantidade_minima_alerta: {type: number, example: 10}
+              unidade: {type: string, example: "unidades"}
+    responses:
+      201:
+        description: Material criado com sucesso
+      400:
+        description: Dados inválidos
+      401:
+        description: Token obrigatório
+    """
+    dados = request.get_json()
+    
+    # Validação: campos obrigatórios
+    if not dados or "nome" not in dados or "quantidade" not in dados:
+        return jsonify({"error": "Os campos 'nome' e 'quantidade' são obrigatórios!"}), 400
+    
+    try:
+        # 1. Buscar o último ID usado
+        contador_ref = db.collection("contador_materiais").document("controle_id")
+        contador_doc = contador_ref.get()
+        
+        if contador_doc.exists:
+            ultimo_id = contador_doc.to_dict().get("ultimo_id", 1)
+            novo_id = ultimo_id + 1
+            contador_ref.update({"ultimo_id": novo_id})
+        else:
+            # Se o documento não existe, cria com ID 1
+            novo_id = 1
+            contador_ref.set({"ultimo_id": 1})
+        
+        # 2. Criar o documento do material
+        db.collection("materiais").add({
+            "id": novo_id,
+            "nome": dados["nome"],
+            "quantidade": dados["quantidade"],
+            "quantidade_minima_alerta": dados.get("quantidade_minima_alerta", 10),
+            "unidade": dados.get("unidade", "unidades")
+        })
+        
+        return jsonify({
+            "message": "Material criado com sucesso!",
+            "id": novo_id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": f"Erro ao criar material: {str(e)}"}), 500
+
 # rota para atualizar produto totalmente (put)
 @app.route('/produtos/<int:id>', methods=['PUT'])
 @token_obrigatorio
