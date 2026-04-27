@@ -1,32 +1,122 @@
 openapi: 3.0.2
 info:
   title: API de Artesanatos da Maya
-  description: Documentação completa do sistema de gestão de produtos (Artesanato e Confeitaria).
-  version: 1.0.0
+  description: |
+    Sistema completo de gestão de produtos artesanais com:
+    - Controle de estoque de materiais
+    - Gestão de produtos com receitas
+    - Autenticação JWT para admin
+  version: 2.0.0
 
 servers:
   - url: https://api-one-delta-89.vercel.app
-    description: Api em produção (Vercel)
+    description: API em produção (Vercel)
 
 components:
-  security:
-    - BearerAuth: []
-    
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtido no login (válido por 1 hora)
+  
+  schemas:
+    Produto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Vaso de Flores"
+        preco:
+          type: number
+          example: 25.50
+        descricao:
+          type: string
+          example: "Artesanato feito com limpa cachimbos"
+        categoria:
+          type: string
+          example: "Decoração"
+        link_img:
+          type: string
+          example: "https://i.ytimg.com/vi/2bjc-hJAhvU/hq720.jpg"
+        tempo_producao:
+          type: string
+          example: "3 dias úteis"
+          description: "Tempo estimado para produzir o item"
+        materiais_usados:
+          type: array
+          description: "Lista de materiais usados na produção"
+          items:
+            type: object
+            properties:
+              id_material:
+                type: integer
+                example: 1
+              quantidade:
+                type: integer
+                example: 5
+      required:
+        - id
+        - nome
+        - preco
+        - descricao
+        - categoria
+        - link_img
+
+    Material:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Limpa cachimbos azul"
+        quantidade:
+          type: integer
+          example: 100
+        quantidade_minima_alerta:
+          type: integer
+          example: 10
+          description: "Quando atingir esse valor, dispara alerta"
+        unidade:
+          type: string
+          example: "unidades"
+      required:
+        - id
+        - nome
+        - quantidade
+
+security:
+  - BearerAuth: []
 
 paths:
+  # ==================== ROTAS PÚBLICAS ====================
   /:
     get:
       summary: Boas-vindas da API
       description: Retorna informações básicas sobre a versão e autoria da API.
+      security: []
       responses:
         200:
           description: Sucesso.
           content:
             application/json:
-              example: {"api": "API do sistema de artesanato (Treino)", "author": "Maya", "version": "1.0"}
+              example: 
+                api: "API do sistema de artesanato (Treino)"
+                author: "Maya"
+                version: "2.0"
+
   /login:
     post:
       summary: Realiza login para obter o token
+      description: |
+        Envie usuário e senha cadastrados no arquivo `.env`
+        O token retornado deve ser usado no header `Authorization: Bearer TOKEN`
+      security: []
       requestBody:
         required: true
         content:
@@ -34,102 +124,280 @@ paths:
             schema:
               type: object
               properties:
-                usuario: {type: string, example: "admin"}
-                senha: {type: string, example: "sua_senha"}
+                usuario:
+                  type: string
+                  example: "admin"
+                senha:
+                  type: string
+                  example: "sua_senha"
       responses:
         200:
-          description: Login realizado. Copie o token retornado.
+          description: Login realizado com sucesso.
+          content:
+            application/json:
+              example:
+                message: "Login realizado com sucesso!"
+                token: "eyJhbGciOiJIUzI1NiIs..."
         401:
           description: Usuário ou senha inválidos.
 
+  # ==================== PRODUTOS - ROTAS PÚBLICAS ====================
   /produtos:
     get:
       summary: Listar todos os produtos
-      description: Retorna uma lista de todos os produtos cadastrados no Firebase Firestore.
+      description: Retorna todos os produtos cadastrados (vitrine pública)
+      security: []
       responses:
         200:
           description: Lista de produtos retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Produto'
 
   /produtos/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: ID numérico do produto.
-        schema:
-          type: integer
     get:
       summary: Buscar produto por ID
       description: Retorna os detalhes de um produto específico.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         200:
           description: Produto encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
         404:
-          description: Produto não encontrado no banco de dados.
-    put:
-      summary: Atualizar produto (Total)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                nome: {type: string}
-                preco: {type: number}
-                descricao: {type: string}
-                categoria: {type: string}
-      responses:
-        200:
-          description: Produto atualizado com sucesso.
-        401:
-          description: Acesso negado (Token inválido).
-    patch:
-      summary: Atualizar produto (Parcial)
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              description: Envie apenas os campos que deseja alterar.
-      responses:
-        200:
-          description: Produto atualizado com sucesso.
-    delete:
-      summary: Excluir produto
-      security:
-        - BearerAuth: []
-      responses:
-        200:
-          description: Produto removido com sucesso.
+          description: Produto não encontrado.
 
+  # ==================== PRODUTOS - ROTAS PRIVADAS ====================
   /criarprodutos:
     post:
       summary: Criar um novo produto
-      description: Adiciona um produto ao Firebase e atualiza automaticamente o contador de ID.
-      security:
-        - BearerAuth: []
+      description: |
+        Adiciona um produto ao Firebase.
+        - O ID é gerado automaticamente
+        - Token JWT obrigatório (admin)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [nome, preco, descricao, categoria]
+              required:
+                - nome
+                - preco
+                - descricao
+                - categoria
+                - link_img
               properties:
-                nome: {type: string, example: "Vaso de Flores"}
-                preco: {type: number, example: 25.50}
-                descricao: {type: string, example: "Artesanato feito com limpa cachimbos"}
-                categoria: {type: string, example: "Decoração"}
+                nome:
+                  type: string
+                  example: "Vaso de Flores"
+                preco:
+                  type: number
+                  example: 25.50
+                descricao:
+                  type: string
+                  example: "Artesanato feito com limpa cachimbos"
+                categoria:
+                  type: string
+                  example: "Decoração"
+                link_img:
+                  type: string
+                  example: "https://..."
+                tempo_producao:
+                  type: string
+                  example: "3 dias úteis"
+                materiais_usados:
+                  type: array
+                  example: [{"id_material": 1, "quantidade": 5}]
       responses:
         201:
-          description: Produto criado com sucesso!
+          description: Produto criado com sucesso.
         400:
           description: Dados inválidos ou incompletos.
         401:
+          description: Acesso negado (Token inválido).
+
+  /produtos/{id}:
+    put:
+      summary: Atualizar produto (TOTAL)
+      description: Substitui TODOS os campos do produto.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Produto'
+      responses:
+        200:
+          description: Produto atualizado com sucesso.
+        401:
           description: Acesso negado.
+
+    patch:
+      summary: Atualizar produto (PARCIAL)
+      description: Envie APENAS os campos que deseja alterar.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Envie só os campos que quer mudar
+              example:
+                preco: 29.90
+                tempo_producao: "4 dias úteis"
+      responses:
+        200:
+          description: Produto atualizado com sucesso.
+        401:
+          description: Acesso negado.
+
+    delete:
+      summary: Excluir produto
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Produto removido com sucesso.
+        401:
+          description: Acesso negado.
+
+  # ==================== MATERIAIS - ROTAS PRIVADAS ====================
+  /materiais:
+    get:
+      summary: Listar todos os materiais
+      description: Retorna todos os materiais cadastrados no estoque.
+      responses:
+        200:
+          description: Lista de materiais retornada.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Material'
+        401:
+          description: Token obrigatório.
+
+    post:
+      summary: Criar um novo material
+      description: Adiciona um material ao estoque.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+      responses:
+        201:
+          description: Material criado com sucesso.
+        400:
+          description: Dados inválidos.
+        401:
+          description: Token obrigatório.
+
+  /materiais/{id}:
+    get:
+      summary: Buscar material por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Material encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Material'
+        404:
+          description: Material não encontrado.
+        401:
+          description: Token obrigatório.
+
+    put:
+      summary: Atualizar material (TOTAL)
+      description: Substitui TODOS os campos do material.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Material'
+      responses:
+        200:
+          description: Material atualizado com sucesso.
+        401:
+          description: Token obrigatório.
+
+    patch:
+      summary: Atualizar material (PARCIAL)
+      description: Envie APENAS os campos que deseja alterar (ex: só quantidade).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              example:
+                quantidade: 90
+      responses:
+        200:
+          description: Material atualizado com sucesso.
+        401:
+          description: Token obrigatório.
+
+    delete:
+      summary: Excluir material
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Material excluído com sucesso.
+        401:
+          description: Token obrigatório.
