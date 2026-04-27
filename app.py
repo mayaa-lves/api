@@ -34,7 +34,8 @@ swagger = Swagger(app, template_file='openapi.yaml')
 # CONFIGURAÇÕES GERAIS
 # ============================================================
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")  # Chave para assinar os tokens JWT
-CORS(app, origins="*")  # Permite que qualquer front-end acesse a API
+# No seu app.py, substitua a linha do CORS por:
+CORS(app, origins="*", supports_credentials=True, methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])  # Permite que qualquer front-end acesse a API
 ADM_USUARIO = os.getenv("ADM_USUARIO")  # Usuário admin (do .env)
 ADM_SENHA = os.getenv("ADM_SENHA")      # Senha admin (do .env)
 
