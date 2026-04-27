@@ -1,12 +1,3 @@
-# ============================================================
-# API DO SISTEMA DE ARTESANATO - MAYA
-# ============================================================
-# Este arquivo contém todas as rotas da API:
-# - Produtos (CRUD completo)
-# - Materiais (CRUD completo)
-# - Autenticação (login com JWT)
-# ============================================================
-
 from flask import Flask, jsonify, request
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -16,81 +7,49 @@ import os
 from dotenv import load_dotenv
 import json
 from flasgger import Swagger
+from datetime import datetime
 
-# Carrega as variáveis do arquivo .env (usuário/senha admin, chave secreta)
 load_dotenv()
 
 app = Flask(__name__)
 
-# ============================================================
-# CONFIGURAÇÃO DO SWAGGER (DOCUMENTAÇÃO AUTOMÁTICA DA API)
-# ============================================================
+# Configuração do Swagger
 app.config['SWAGGER'] = {
     'openapi': '3.0.2'
 }
 swagger = Swagger(app, template_file='openapi.yaml')
 
-# ============================================================
-# CONFIGURAÇÕES GERAIS
-# ============================================================
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")  # Chave para assinar os tokens JWT
+# Configurações gerais
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+CORS(app, origins="*")
+ADM_USUARIO = os.getenv("ADM_USUARIO")
+ADM_SENHA = os.getenv("ADM_SENHA")
 
-from flask_cors import CORS
-
-CORS(app, origins=["https://api-one-delta-89.vercel.app", "http://localhost:5500", "http://127.0.0.1:5500"])
-
-ADM_USUARIO = os.getenv("ADM_USUARIO")  # Usuário admin (do .env)
-ADM_SENHA = os.getenv("ADM_SENHA")      # Senha admin (do .env)
-
-# ============================================================
-# CONEXÃO COM O FIREBASE
-# ============================================================
-# Verifica se está rodando na Vercel (produção) ou localmente
+# Conexão com Firebase
 if os.getenv("VERCEL"):
-    # Na Vercel, as credenciais estão em uma variável de ambiente JSON
     cred = credentials.Certificate(json.loads(os.getenv("FIREBASE_CREDENTIALS")))
 else:
-    # Localmente, as credenciais estão no arquivo firebase.json
     cred = credentials.Certificate("firebase.json")
 
 firebase_admin.initialize_app(cred)
-db = firestore.client()  # Cliente do Firestore para operações no banco
+db = firestore.client()
 
 # ============================================================
-# ROTA PRINCIPAL (BOAS-VINDAS)
+# ROTA PRINCIPAL
 # ============================================================
 @app.route('/', methods=['GET'])
 def home():
-    """Rota raiz da API - retorna informações básicas"""
     return jsonify({
         "api": "API do sistema de artesanato (Treino)",
-        "version": "1.0",
+        "version": "2.0",
         "author": "Maya"
     }), 200
 
 # ============================================================
-# ROTA DE LOGIN (PÚBLICA)
+# ROTA DE LOGIN
 # ============================================================
 @app.route("/login", methods=["POST"])
 def login():
-    """
-    Faz login e retorna um token JWT para usar nas rotas protegidas.
-    ---
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              usuario: {type: string, example: "admin"}
-              senha: {type: string, example: "123456"}
-    responses:
-      200:
-        description: Login realizado com sucesso. Retorna token.
-      401:
-        description: Usuário ou senha inválidos.
-    """
     dados = request.get_json()
 
     if not dados:
@@ -102,7 +61,6 @@ def login():
     if not usuario or not senha:
         return jsonify({"Error": "Usuário e senha são obrigatórios!"}), 400
     
-    # Verifica se o usuário e senha correspondem ao que está no .env
     if usuario == ADM_USUARIO and senha == ADM_SENHA:
         token = gerar_token(usuario)
         return jsonify({"message": "Login realizado com sucesso!", "token": token}), 200
@@ -110,45 +68,20 @@ def login():
     return jsonify({"Error": "Usuário ou senha inválidos"}), 401
 
 # ============================================================
-# ROTAS PÚBLICAS (QUALQUER PESSOA PODE VER)
+# ROTAS PÚBLICAS - PRODUTOS
 # ============================================================
-
 @app.route('/produtos', methods=['GET'])
 def listar_produtos():
-    """
-    Retorna todos os produtos cadastrados (vitrine pública).
-    ---
-    responses:
-      200:
-        description: Lista de produtos retornada com sucesso.
-    """
     produtos = []
     lista = db.collection('produtos').stream()
 
     for item in lista:
-        # Converte cada documento do Firebase em dicionário Python
         produtos.append(item.to_dict())
 
     return jsonify(produtos), 200
 
-
 @app.route('/produtos/<int:id>', methods=['GET'])
 def buscar_produto_by_id(id):
-    """
-    Busca um produto específico pelo ID.
-    ---
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    responses:
-      200:
-        description: Produto encontrado.
-      404:
-        description: Produto não encontrado.
-    """
     lista = db.collection('produtos').where('id', '==', id).stream()
 
     for item in lista:
@@ -157,55 +90,23 @@ def buscar_produto_by_id(id):
     return jsonify({"error": "Produto não encontrado"}), 404
 
 # ============================================================
-# ROTAS PRIVADAS (PRECISAM DE TOKEN JWT)
+# ROTAS PRIVADAS - PRODUTOS (ADMIN)
 # ============================================================
-
 @app.route('/criarprodutos', methods=['POST'])
 @token_obrigatorio
 def criar_produto():
-    """
-    Cria um novo produto (apenas admin).
-    ---
-    security:
-      - BearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [nome, preco, descricao, categoria, link_img]
-            properties:
-              nome: {type: string, example: "Vaso de Flores"}
-              preco: {type: number, example: 25.50}
-              descricao: {type: string, example: "Artesanato feito com limpa cachimbos"}
-              categoria: {type: string, example: "Decoração"}
-              link_img: {type: string, example: "https://..."}
-              tempo_producao: {type: string, example: "3 dias úteis"}  # NOVO
-              materiais_usados: {type: array, example: [{"id_material": 1, "quantidade": 5}]}  # NOVO
-    responses:
-      201:
-        description: Produto criado com sucesso.
-      400:
-        description: Dados inválidos.
-      401:
-        description: Token obrigatório.
-    """
     dados = request.get_json()
 
-    # Validação dos campos obrigatórios
     if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados or "link_img" not in dados:
         return jsonify({"error": "Dados inválidos!"}), 400
 
     try:
-        # Gerar novo ID automático (sequencial)
         contador_ref = db.collection("contador").document("controle_id")
         contador_doc = contador_ref.get()
         ultimo_id = contador_doc.to_dict().get("ultimo_id", 0)
         novo_id = ultimo_id + 1
         contador_ref.update({"ultimo_id": novo_id})
 
-        # Dados do produto (incluindo os novos campos)
         produto_data = {
             "id": novo_id,
             "nome": dados["nome"],
@@ -213,8 +114,8 @@ def criar_produto():
             "descricao": dados["descricao"],
             "categoria": dados["categoria"],
             "link_img": dados["link_img"],
-            "tempo_producao": dados.get("tempo_producao", "5 dias úteis"),  # Valor padrão
-            "materiais_usados": dados.get("materiais_usados", [])           # Lista de materiais usados
+            "tempo_producao": dados.get("tempo_producao", "5 dias úteis"),
+            "materiais_usados": dados.get("materiais_usados", [])
         }
         
         db.collection("produtos").add(produto_data)
@@ -223,41 +124,9 @@ def criar_produto():
     except Exception as e:
         return jsonify({"error": f"Erro ao criar produto: {str(e)}"}), 500
 
-
 @app.route('/produtos/<int:id>', methods=['PUT'])
 @token_obrigatorio
 def put_produtos(id):
-    """
-    Atualiza um produto COMPLETAMENTE (todos os campos).
-    ---
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              nome: {type: string}
-              preco: {type: number}
-              descricao: {type: string}
-              categoria: {type: string}
-              link_img: {type: string}
-              tempo_producao: {type: string}
-              materiais_usados: {type: array}
-    responses:
-      200:
-        description: Produto atualizado com sucesso.
-      401:
-        description: Token obrigatório.
-    """
     dados = request.get_json()
 
     if not dados or "nome" not in dados or "preco" not in dados or "descricao" not in dados or "categoria" not in dados or "link_img" not in dados:
@@ -279,32 +148,9 @@ def put_produtos(id):
 
     return jsonify({"message": "Produto atualizado com sucesso!"}), 200
 
-
 @app.route('/produtos/<int:id>', methods=['PATCH'])
 @token_obrigatorio
 def patch_produtos(id):
-    """
-    Atualiza UM OU MAIS campos do produto (atualização parcial).
-    ---
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            description: Envie APENAS os campos que quer alterar.
-    responses:
-      200:
-        description: Produto atualizado com sucesso.
-    """
     dados = request.get_json()
     
     docs = db.collection("produtos").where("id", "==", id).limit(1).get()
@@ -315,25 +161,9 @@ def patch_produtos(id):
 
     return jsonify({"message": "Produto atualizado com sucesso!"}), 200
 
-
 @app.route('/produtos/<int:id>', methods=['DELETE'])
 @token_obrigatorio
-def excluir_produto(id):
-    """
-    Exclui um produto do banco de dados.
-    ---
-    security:
-      - BearerAuth: []
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    responses:
-      200:
-        description: Produto excluído com sucesso.
-    """
+def excluir_produto(id):  
     docs = db.collection("produtos").where("id", "==", id).limit(1).get()
 
     for doc in docs:
@@ -345,18 +175,15 @@ def excluir_produto(id):
 # ============================================================
 # ROTAS PARA MATERIAIS (ESTOQUE)
 # ============================================================
-
 @app.route('/materiais', methods=['POST'])
 @token_obrigatorio
 def criar_material():
-    """Cria um novo material no estoque"""
     dados = request.get_json()
     
     if not dados or "nome" not in dados or "quantidade" not in dados:
         return jsonify({"error": "Os campos 'nome' e 'quantidade' são obrigatórios!"}), 400
     
     try:
-        # Gera ID automático para o material
         contador_ref = db.collection("contador_materiais").document("controle_id")
         contador_doc = contador_ref.get()
         
@@ -368,7 +195,6 @@ def criar_material():
             novo_id = 1
             contador_ref.set({"ultimo_id": 1})
         
-        # Salva o material no Firestore
         db.collection("materiais").add({
             "id": novo_id,
             "nome": dados["nome"],
@@ -381,11 +207,9 @@ def criar_material():
     except Exception as e:
         return jsonify({"error": f"Erro ao criar material: {str(e)}"}), 500
 
-
 @app.route('/materiais', methods=['GET'])
 @token_obrigatorio
 def listar_materiais():
-    """Lista todos os materiais do estoque"""
     try:
         materiais = []
         lista = db.collection('materiais').stream()
@@ -397,11 +221,9 @@ def listar_materiais():
     except Exception as e:
         return jsonify({"error": f"Erro ao listar materiais: {str(e)}"}), 500
 
-
 @app.route('/materiais/<int:id>', methods=['GET'])
 @token_obrigatorio
 def buscar_material(id):
-    """Busca um material específico pelo ID"""
     try:
         docs = db.collection('materiais').where('id', '==', id).limit(1).get()
         
@@ -412,11 +234,9 @@ def buscar_material(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/materiais/<int:id>', methods=['PUT'])
 @token_obrigatorio
 def atualizar_material_total(id):
-    """Atualiza TODOS os campos de um material"""
     dados = request.get_json()
     
     if not dados or "nome" not in dados or "quantidade" not in dados:
@@ -445,11 +265,9 @@ def atualizar_material_total(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/materiais/<int:id>', methods=['PATCH'])
 @token_obrigatorio
 def atualizar_material(id):
-    """Atualiza UM OU MAIS campos de um material (ex: só a quantidade)"""
     try:
         dados = request.get_json()
         
@@ -470,11 +288,9 @@ def atualizar_material(id):
     except Exception as e:
         return jsonify({"error": f"Erro ao atualizar material: {str(e)}"}), 500
 
-
 @app.route('/materiais/<int:id>', methods=['DELETE'])
 @token_obrigatorio
 def excluir_material(id):
-    """Exclui um material do estoque"""
     try:
         docs = db.collection('materiais').where('id', '==', id).limit(1).get()
         
@@ -493,20 +309,57 @@ def excluir_material(id):
         return jsonify({"error": str(e)}), 500
 
 # ============================================================
-# TRATAMENTO DE ERROS GLOBAIS
+# ROTAS PARA COMENTÁRIOS (PÚBLICAS)
+# ============================================================
+@app.route('/comentarios/<int:produto_id>', methods=['GET'])
+def listar_comentarios(produto_id):
+    """Lista todos os comentários de um produto específico"""
+    try:
+        comentarios = []
+        lista = db.collection('comentarios').where('produto_id', '==', produto_id).order_by('data', direction=firestore.Query.DESCENDING).stream()
+        
+        for doc in lista:
+            comentario = doc.to_dict()
+            comentario['id'] = doc.id
+            comentarios.append(comentario)
+        
+        return jsonify(comentarios), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/comentarios', methods=['POST'])
+def criar_comentario():
+    """Cria um novo comentário para um produto"""
+    dados = request.get_json()
+    
+    if not dados or "produto_id" not in dados or "nome" not in dados or "estrelas" not in dados or "texto" not in dados:
+        return jsonify({"error": "Campos obrigatórios: produto_id, nome, estrelas, texto"}), 400
+    
+    try:
+        novo_comentario = {
+            "produto_id": dados["produto_id"],
+            "nome": dados["nome"][:50],
+            "estrelas": dados["estrelas"],
+            "texto": dados["texto"][:500],
+            "data": datetime.now().isoformat()
+        }
+        
+        db.collection('comentarios').add(novo_comentario)
+        
+        return jsonify({"message": "Comentário adicionado com sucesso!"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================
+# TRATAMENTO DE ERROS
 # ============================================================
 @app.errorhandler(404)
 def erro404(error):
-    """Rota não encontrada"""
     return jsonify({"error": "Rota não encontrada!"}), 404
 
 @app.errorhandler(500)
 def erro500(error):
-    """Erro interno do servidor"""
     return jsonify({"error": "Erro interno no servidor!"}), 500
 
-# ============================================================
-# INICIALIZAÇÃO DO SERVIDOR
-# ============================================================
 if __name__ == '__main__':
     app.run(debug=True)
