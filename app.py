@@ -35,15 +35,9 @@ swagger = Swagger(app, template_file='openapi.yaml')
 # ============================================================
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")  # Chave para assinar os tokens JWT
 
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+from flask_cors import CORS
 
-@app.after_request
-def after_request(resposta):
-    resposta.headers.add('Access-Control-Allow-Origin', '*')
-    resposta.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    resposta.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS')
-    resposta.headers.add('Access-Control-Allow-Credentials', 'true')
-    return resposta
+CORS(app, origins="*", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
 
 ADM_USUARIO = os.getenv("ADM_USUARIO")  # Usuário admin (do .env)
 ADM_SENHA = os.getenv("ADM_SENHA")      # Senha admin (do .env)
