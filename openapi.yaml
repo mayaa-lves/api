@@ -147,3 +147,42 @@ paths:
       responses:
         200:
           description: Material excluído
+
+  /comentarios/{produto_id}:
+    get:
+      summary: Listar comentários de um produto
+      parameters:
+        - name: produto_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Lista de comentários
+
+  /comentarios:
+    post:
+      summary: Adicionar um comentário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                produto_id:
+                  type: integer
+                nome:
+                  type: string
+                estrelas:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                texto:
+                  type: string
+      responses:
+        201:
+          description: Comentário adicionado
+        400:
+          description: Dados inválidos
