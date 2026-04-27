@@ -1,7 +1,7 @@
 openapi: 3.0.2
 info:
   title: API de Artesanatos da Maya
-  description: Sistema de gestão de produtos e materiais
+  description: Sistema completo de gestão de produtos, materiais e comentários
   version: 2.0.0
 
 servers:
@@ -186,3 +186,29 @@ paths:
           description: Comentário adicionado
         400:
           description: Dados inválidos
+
+  /admin/comentarios:
+    get:
+      summary: Listar todos os comentários (admin)
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Lista de todos os comentários
+
+  /admin/comentarios/{comentario_id}:
+    delete:
+      summary: Excluir comentário (admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: comentario_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Comentário excluído
+        404:
+          description: Comentário não encontrado

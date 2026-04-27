@@ -320,7 +320,7 @@ def listar_comentarios(produto_id):
         
         for doc in lista:
             comentario = doc.to_dict()
-            comentario['id'] = doc.id
+            comentario['id'] = doc.id  # ID automático do Firebase
             comentarios.append(comentario)
         
         return jsonify(comentarios), 200
@@ -344,9 +344,45 @@ def criar_comentario():
             "data": datetime.now().isoformat()
         }
         
-        db.collection('comentarios').add(novo_comentario)
+        doc_ref = db.collection('comentarios').add(novo_comentario)
         
-        return jsonify({"message": "Comentário adicionado com sucesso!"}), 201
+        return jsonify({"message": "Comentário adicionado com sucesso!", "id": doc_ref[1].id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================
+# ROTAS DE ADMIN PARA COMENTÁRIOS (EXCLUIR)
+# ============================================================
+@app.route('/admin/comentarios', methods=['GET'])
+@token_obrigatorio
+def listar_todos_comentarios():
+    """Lista TODOS os comentários (apenas admin) - útil para moderação"""
+    try:
+        comentarios = []
+        lista = db.collection('comentarios').order_by('data', direction=firestore.Query.DESCENDING).stream()
+        
+        for doc in lista:
+            comentario = doc.to_dict()
+            comentario['id'] = doc.id
+            comentarios.append(comentario)
+        
+        return jsonify(comentarios), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/admin/comentarios/<comentario_id>', methods=['DELETE'])
+@token_obrigatorio
+def excluir_comentario(comentario_id):
+    """Exclui um comentário pelo ID do documento (apenas admin)"""
+    try:
+        doc_ref = db.collection('comentarios').document(comentario_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return jsonify({"error": "Comentário não encontrado"}), 404
+        
+        doc_ref.delete()
+        return jsonify({"message": "Comentário excluído com sucesso!"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
