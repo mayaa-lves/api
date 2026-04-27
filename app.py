@@ -37,7 +37,7 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")  # Chave para assinar os toke
 
 from flask_cors import CORS
 
-CORS(app, origins="*", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
+CORS(app, origins=["https://api-one-delta-89.vercel.app", "http://localhost:5500", "http://127.0.0.1:5500"])
 
 ADM_USUARIO = os.getenv("ADM_USUARIO")  # Usuário admin (do .env)
 ADM_SENHA = os.getenv("ADM_SENHA")      # Senha admin (do .env)
