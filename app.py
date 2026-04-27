@@ -191,6 +191,33 @@ def criar_material():
     except Exception as e:
         return jsonify({"error": f"Erro ao criar material: {str(e)}"}), 500
 
+@app.route('/materiais', methods=['GET'])
+@token_obrigatorio
+def listar_materiais():
+    """
+    Lista todos os materiais do estoque
+    ---
+    security:
+      - BearerAuth: []
+    responses:
+      200:
+        description: Lista de materiais retornada com sucesso
+      401:
+        description: Token obrigatório
+    """
+    try:
+        materiais = []
+        lista = db.collection('materiais').stream()
+        
+        for documento in lista:
+            material = documento.to_dict()
+            materiais.append(material)
+        
+        return jsonify(materiais), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Erro ao listar materiais: {str(e)}"}), 500
+    
 # rota para atualizar produto totalmente (put)
 @app.route('/produtos/<int:id>', methods=['PUT'])
 @token_obrigatorio
