@@ -1,439 +1,122 @@
 openapi: 3.0.2
 info:
   title: API de Artesanatos da Maya
-  description: |
-    Sistema completo de gestão de produtos artesanais.
-    
-    ## Funcionalidades:
-    - CRUD completo de produtos
-    - CRUD completo de materiais (estoque)
-    - Autenticação JWT para admin
-    - Alertas de estoque baixo
+  description: Sistema de gestão de produtos e materiais
   version: 2.0.0
-  contact:
-    name: Maya
-  license:
-    name: MIT
 
 servers:
   - url: https://api-one-delta-89.vercel.app
-    description: API em produção (Vercel)
+    description: API em produção
   - url: http://localhost:5000
-    description: Servidor local para desenvolvimento
+    description: Servidor local
 
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: Token JWT obtido no login (válido por 1 hora)
-
-  schemas:
-    Produto:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-          description: ID único gerado automaticamente
-        nome:
-          type: string
-          example: "Vaso de Flores"
-          description: Nome do produto
-        preco:
-          type: number
-          example: 25.50
-          description: Preço em reais
-        descricao:
-          type: string
-          example: "Artesanato feito com limpa cachimbos"
-          description: Descrição detalhada
-        categoria:
-          type: string
-          example: "Decoração"
-          description: Categoria do produto
-        link_img:
-          type: string
-          example: "https://i.ytimg.com/vi/2bjc-hJAhvU/hq720.jpg"
-          description: URL da imagem do produto
-        tempo_producao:
-          type: string
-          example: "3 dias úteis"
-          description: Tempo estimado para produção
-        materiais_usados:
-          type: array
-          description: Lista de materiais usados na produção
-          items:
-            type: object
-            properties:
-              id_material:
-                type: integer
-                example: 1
-              quantidade:
-                type: integer
-                example: 5
-      required:
-        - id
-        - nome
-        - preco
-        - descricao
-        - categoria
-        - link_img
-
-    Material:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-          description: ID único gerado automaticamente
-        nome:
-          type: string
-          example: "Limpa cachimbos azul"
-          description: Nome do material
-        quantidade:
-          type: integer
-          example: 100
-          description: Quantidade disponível em estoque
-        quantidade_minima_alerta:
-          type: integer
-          example: 10
-          description: Quando atingir esse valor, dispara alerta
-        unidade:
-          type: string
-          example: "unidades"
-          description: Unidade de medida (unidades, kg, ml, etc)
-      required:
-        - id
-        - nome
-        - quantidade
-
-    LoginRequest:
-      type: object
-      properties:
-        usuario:
-          type: string
-          example: "admin"
-        senha:
-          type: string
-          example: "123456"
-      required:
-        - usuario
-        - senha
-
-    LoginResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "Login realizado com sucesso!"
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIs..."
-
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          example: "Mensagem de erro"
-
-security:
-  - BearerAuth: []
 
 paths:
-  # ==================== ROTAS PÚBLICAS ====================
   /:
     get:
-      summary: Boas-vindas da API
-      description: Retorna informações básicas sobre a versão e autoria da API
-      security: []
-      tags:
-        - Status
+      summary: Boas-vindas
       responses:
         200:
           description: Sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  api:
-                    type: string
-                    example: "API do sistema de artesanato (Treino)"
-                  author:
-                    type: string
-                    example: "Maya"
-                  version:
-                    type: string
-                    example: "2.0"
 
   /login:
     post:
-      summary: Login do administrador
-      description: Autentica o usuário e retorna um token JWT para usar nas rotas protegidas
-      security: []
-      tags:
-        - Autenticação
+      summary: Login
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              type: object
+              properties:
+                usuario:
+                  type: string
+                senha:
+                  type: string
       responses:
         200:
-          description: Login realizado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        400:
-          description: Dados incompletos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Login realizado
         401:
-          description: Usuário ou senha inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Credenciais inválidas
 
-  # ==================== PRODUTOS ====================
   /produtos:
     get:
-      summary: Listar todos os produtos
-      description: Retorna todos os produtos cadastrados (vitrine pública)
-      security: []
-      tags:
-        - Produtos
+      summary: Listar produtos
       responses:
         200:
-          description: Lista de produtos retornada com sucesso
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Produto'
+          description: Lista de produtos
 
   /criarprodutos:
     post:
-      summary: Criar novo produto
-      description: Adiciona um produto ao catálogo (apenas admin)
-      tags:
-        - Produtos
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - nome
-                - preco
-                - descricao
-                - categoria
-                - link_img
-              properties:
-                nome:
-                  type: string
-                  example: "Vaso de Flores"
-                preco:
-                  type: number
-                  example: 25.50
-                descricao:
-                  type: string
-                  example: "Artesanato feito com limpa cachimbos"
-                categoria:
-                  type: string
-                  example: "Decoração"
-                link_img:
-                  type: string
-                  example: "https://..."
-                tempo_producao:
-                  type: string
-                  example: "3 dias úteis"
-                materiais_usados:
-                  type: array
-                  example: [{"id_material": 1, "quantidade": 5}]
+      summary: Criar produto
+      security:
+        - BearerAuth: []
       responses:
         201:
-          description: Produto criado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  id:
-                    type: integer
-        400:
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        401:
-          description: Token obrigatório
+          description: Produto criado
 
   /produtos/{id}:
     get:
-      summary: Buscar produto por ID
-      description: Retorna os detalhes de um produto específico
-      security: []
-      tags:
-        - Produtos
+      summary: Buscar produto
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-          description: ID numérico do produto
       responses:
         200:
           description: Produto encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Produto'
         404:
-          description: Produto não encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+          description: Não encontrado
     put:
-      summary: Atualizar produto (completo)
-      description: Substitui TODOS os dados do produto (apenas admin)
-      tags:
-        - Produtos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Produto'
+      summary: Atualizar produto
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Produto atualizado com sucesso
-        400:
-          description: Dados inválidos
-        401:
-          description: Token obrigatório
-        404:
-          description: Produto não encontrado
-
+          description: Produto atualizado
     patch:
-      summary: Atualizar produto (parcial)
-      description: Envie APENAS os campos que deseja alterar (apenas admin)
-      tags:
-        - Produtos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              example:
-                preco: 29.90
-                tempo_producao: "4 dias úteis"
+      summary: Atualizar parcial
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Produto atualizado com sucesso
-        401:
-          description: Token obrigatório
-
+          description: Produto atualizado
     delete:
       summary: Excluir produto
-      description: Remove um produto do catálogo (apenas admin)
-      tags:
-        - Produtos
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Produto excluído com sucesso
-        401:
-          description: Token obrigatório
-        404:
-          description: Produto não encontrado
+          description: Produto excluído
 
-  # ==================== MATERIAIS ====================
   /materiais:
     get:
-      summary: Listar todos os materiais
-      description: Retorna todos os materiais do estoque (apenas admin)
-      tags:
-        - Materiais
+      summary: Listar materiais
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Lista de materiais retornada
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Material'
-        401:
-          description: Token obrigatório
-
+          description: Lista de materiais
     post:
-      summary: Criar novo material
-      description: Adiciona um material ao estoque (apenas admin)
-      tags:
-        - Materiais
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Material'
+      summary: Criar material
+      security:
+        - BearerAuth: []
       responses:
         201:
-          description: Material criado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  id:
-                    type: integer
-        400:
-          description: Dados inválidos
-        401:
-          description: Token obrigatório
+          description: Material criado
 
   /materiais/{id}:
     get:
-      summary: Buscar material por ID
-      description: Retorna os detalhes de um material específico (apenas admin)
-      tags:
-        - Materiais
+      summary: Buscar material
+      security:
+        - BearerAuth: []
       parameters:
         - name: id
           in: path
@@ -443,80 +126,24 @@ paths:
       responses:
         200:
           description: Material encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Material'
-        401:
-          description: Token obrigatório
-        404:
-          description: Material não encontrado
-
     put:
-      summary: Atualizar material (completo)
-      description: Substitui TODOS os dados do material (apenas admin)
-      tags:
-        - Materiais
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Material'
+      summary: Atualizar material
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Material atualizado com sucesso
-        400:
-          description: Dados inválidos
-        401:
-          description: Token obrigatório
-
+          description: Material atualizado
     patch:
-      summary: Atualizar material (parcial)
-      description: Envie APENAS os campos que deseja alterar (ex: só quantidade)
-      tags:
-        - Materiais
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              example:
-                quantidade: 90
+      summary: Atualizar parcial
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Material atualizado com sucesso
-        401:
-          description: Token obrigatório
-
+          description: Material atualizado
     delete:
       summary: Excluir material
-      description: Remove um material do estoque (apenas admin)
-      tags:
-        - Materiais
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+      security:
+        - BearerAuth: []
       responses:
         200:
-          description: Material excluído com sucesso
-        401:
-          description: Token obrigatório
-        404:
-          description: Material não encontrado
+          description: Material excluído
