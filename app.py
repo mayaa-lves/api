@@ -351,6 +351,96 @@ def criar_comentario():
         return jsonify({"error": str(e)}), 500
 
 # ============================================================
+# ROTAS PARA PEDIDOS
+# ============================================================
+
+@app.route('/pedidos', methods=['GET'])
+@token_obrigatorio
+def listar_pedidos():
+    """Lista todos os pedidos (apenas admin)"""
+    try:
+        pedidos = []
+        lista = db.collection('pedidos').order_by('data', direction=firestore.Query.DESCENDING).stream()
+        
+        for doc in lista:
+            pedido = doc.to_dict()
+            pedido['id'] = doc.id
+            pedidos.append(pedido)
+        
+        return jsonify(pedidos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/pedidos', methods=['POST'])
+def criar_pedido():
+    """Cria um novo pedido (público - cliente finaliza compra)"""
+    try:
+        dados = request.get_json()
+        
+        if not dados or "itens" not in dados or "total" not in dados:
+            return jsonify({"error": "Campos obrigatórios: itens, total"}), 400
+        
+        from datetime import datetime
+        
+        novo_pedido = {
+            "data": datetime.now().isoformat(),
+            "data_formatada": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "itens": dados["itens"],
+            "itens_detalhados": dados.get("itens_detalhados", []),
+            "total": float(dados["total"]),
+            "cliente": dados.get("cliente", "Cliente via WhatsApp"),
+            "status": "✅ Pedido recebido",
+            "whatsapp": dados.get("whatsapp", "")
+        }
+        
+        db.collection('pedidos').add(novo_pedido)
+        
+        return jsonify({"message": "Pedido salvo com sucesso!"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/admin/pedidos/<pedido_id>', methods=['DELETE'])
+@token_obrigatorio
+def excluir_pedido(pedido_id):
+    """Exclui um pedido (apenas admin)"""
+    try:
+        doc_ref = db.collection('pedidos').document(pedido_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return jsonify({"error": "Pedido não encontrado"}), 404
+        
+        doc_ref.delete()
+        return jsonify({"message": "Pedido excluído com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/admin/pedidos/<pedido_id>/status', methods=['PATCH'])
+@token_obrigatorio
+def atualizar_status_pedido(pedido_id):
+    """Atualiza o status de um pedido (apenas admin)"""
+    try:
+        dados = request.get_json()
+        
+        if not dados or "status" not in dados:
+            return jsonify({"error": "Campo 'status' é obrigatório"}), 400
+        
+        doc_ref = db.collection('pedidos').document(pedido_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            return jsonify({"error": "Pedido não encontrado"}), 404
+        
+        doc_ref.update({"status": dados["status"]})
+        
+        return jsonify({"message": "Status atualizado com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================================
 # ROTAS DE ADMIN PARA COMENTÁRIOS (EXCLUIR)
 # ============================================================
 @app.route('/admin/comentarios', methods=['GET'])

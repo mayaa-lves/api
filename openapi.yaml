@@ -212,3 +212,70 @@ paths:
           description: Comentário excluído
         404:
           description: Comentário não encontrado
+    /pedidos:
+    get:
+      summary: Listar todos os pedidos (admin)
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: Lista de pedidos
+    post:
+      summary: Criar um novo pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itens:
+                  type: string
+                total:
+                  type: number
+                cliente:
+                  type: string
+                whatsapp:
+                  type: string
+      responses:
+        201:
+          description: Pedido salvo
+
+  /admin/pedidos/{pedido_id}:
+    delete:
+      summary: Excluir pedido (admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: pedido_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Pedido excluído
+
+  /admin/pedidos/{pedido_id}/status:
+    patch:
+      summary: Atualizar status do pedido (admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: pedido_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+      responses:
+        200:
+          description: Status atualizado
