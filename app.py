@@ -275,6 +275,71 @@ def atualizar_material(id):
     except Exception as e:
         return jsonify({"error": f"Erro ao atualizar material: {str(e)}"}), 500
     
+@app.route('/materiais/<int:id>', methods=['GET'])
+@token_obrigatorio
+def buscar_material(id):
+    try:
+        docs = db.collection('materiais').where('id', '==', id).limit(1).get()
+        
+        for doc in docs:
+            return jsonify(doc.to_dict()), 200
+        
+        return jsonify({"error": "Material não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/materiais/<int:id>', methods=['PUT'])
+@token_obrigatorio
+def atualizar_material_total(id):
+    dados = request.get_json()
+    
+    if not dados or "nome" not in dados or "quantidade" not in dados:
+        return jsonify({"error": "Campos 'nome' e 'quantidade' são obrigatórios!"}), 400
+    
+    try:
+        docs = db.collection('materiais').where('id', '==', id).limit(1).get()
+        
+        doc_id = None
+        for doc in docs:
+            doc_id = doc.id
+            break
+        
+        if not doc_id:
+            return jsonify({"error": "Material não encontrado"}), 404
+        
+        doc_ref = db.collection('materiais').document(doc_id)
+        doc_ref.update({
+            "nome": dados["nome"],
+            "quantidade": dados["quantidade"],
+            "quantidade_minima_alerta": dados.get("quantidade_minima_alerta", 10),
+            "unidade": dados.get("unidade", "unidades")
+        })
+        
+        return jsonify({"message": "Material atualizado com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/materiais/<int:id>', methods=['DELETE'])
+@token_obrigatorio
+def excluir_material(id):
+    try:
+        docs = db.collection('materiais').where('id', '==', id).limit(1).get()
+        
+        doc_id = None
+        for doc in docs:
+            doc_id = doc.id
+            break
+        
+        if not doc_id:
+            return jsonify({"error": "Material não encontrado"}), 404
+        
+        db.collection('materiais').document(doc_id).delete()
+        
+        return jsonify({"message": "Material excluído com sucesso!"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    
 # rota para atualizar produto totalmente (put)
 @app.route('/produtos/<int:id>', methods=['PUT'])
 @token_obrigatorio
